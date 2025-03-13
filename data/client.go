@@ -5,14 +5,11 @@ import (
 	"blockchain/crypto11"
 	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -260,19 +257,19 @@ func deserializeECDSAPublicKey(str string) (*ecdsa.PublicKey, error) {
 }
 
 // -----------------------------------------------------------------------------------------------------------------
-func SaveUsersToFile(users []*Client, filePath string) error {
-	jsonData, err := json.Marshal(users)
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(filePath, jsonData, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func SaveUsersToFile(users []*Client, filePath string) error {
+//	jsonData, err := json.Marshal(users)
+//	if err != nil {
+//		return err
+//	}
+//
+//	err = os.WriteFile(filePath, jsonData, 0644)
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 // LoadUsersFromFile 从文件中加载用户数据
 // 简单解析JSON，直接读取filePath文件，解析为 []*Client 切片，然后返回。（适用于 JSON 文件格式与 Client 结构体完全匹配的情况。）
@@ -293,67 +290,67 @@ func SaveUsersToFile(users []*Client, filePath string) error {
 //	}
 
 // LoadUsersFromFile 处理复杂的 JSON 结构。适用于 JSON 文件结构不匹配 Client 结构体 的情况。使用 map[string]interface{} 手动解析 JSON，确保数据正确转换。
-func LoadUsersFromFile(filePath string) ([]*Client, error) {
-	fileData, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	// 定义结构体用于解析JSON数据
-	var jsonData []map[string]interface{}
-	err = json.Unmarshal(fileData, &jsonData)
-	if err != nil {
-		fmt.Println("Error unmarshalling JSON:", err)
-		return nil, err
-	}
-
-	// 创建用户列表
-	var users []*Client
-
-	// 遍历JSON数据，提取并创建Client实例
-	for _, userJSON := range jsonData {
-		id := userJSON["ID"].(string)
-		address := userJSON["Address"].(string)
-		balance, _ := strconv.ParseFloat(fmt.Sprint(userJSON["Balance"]), 64)
-
-		// 解析PrivateKey
-		var d, x, y *big.Int
-
-		if dJSON, ok := userJSON["D"]; ok && dJSON != nil {
-			if d, ok = dJSON.(*big.Int); !ok {
-				return nil, fmt.Errorf("Invalid D field in JSON")
-			}
-		}
-
-		if xJSON, ok := userJSON["X"]; ok && xJSON != nil {
-			if x, ok = xJSON.(*big.Int); !ok {
-				return nil, fmt.Errorf("Invalid X field in JSON")
-			}
-		}
-
-		if yJSON, ok := userJSON["Y"]; ok && yJSON != nil {
-			if y, ok = yJSON.(*big.Int); !ok {
-				return nil, fmt.Errorf("Invalid Y field in JSON")
-			}
-		}
-
-		privateKey := &ecdsa.PrivateKey{
-			D: d,
-			PublicKey: ecdsa.PublicKey{
-				X: x,
-				Y: y,
-			},
-		}
-
-		publicKey := &ecdsa.PublicKey{
-			X: x,
-			Y: y,
-		}
-
-		// 创建Client实例
-		client := NewClient(id, address, balance, privateKey, publicKey)
-		users = append(users, client)
-	}
-
-	return users, nil
-}
+//func LoadUsersFromFile(filePath string) ([]*Client, error) {
+//	fileData, err := os.ReadFile(filePath)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	// 定义结构体用于解析JSON数据
+//	var jsonData []map[string]interface{}
+//	err = json.Unmarshal(fileData, &jsonData)
+//	if err != nil {
+//		fmt.Println("Error unmarshalling JSON:", err)
+//		return nil, err
+//	}
+//
+//	// 创建用户列表
+//	var users []*Client
+//
+//	// 遍历JSON数据，提取并创建Client实例
+//	for _, userJSON := range jsonData {
+//		id := userJSON["ID"].(string)
+//		address := userJSON["Address"].(string)
+//		balance, _ := strconv.ParseFloat(fmt.Sprint(userJSON["Balance"]), 64)
+//
+//		// 解析PrivateKey
+//		var d, x, y *big.Int
+//
+//		if dJSON, ok := userJSON["D"]; ok && dJSON != nil {
+//			if d, ok = dJSON.(*big.Int); !ok {
+//				return nil, fmt.Errorf("Invalid D field in JSON")
+//			}
+//		}
+//
+//		if xJSON, ok := userJSON["X"]; ok && xJSON != nil {
+//			if x, ok = xJSON.(*big.Int); !ok {
+//				return nil, fmt.Errorf("Invalid X field in JSON")
+//			}
+//		}
+//
+//		if yJSON, ok := userJSON["Y"]; ok && yJSON != nil {
+//			if y, ok = yJSON.(*big.Int); !ok {
+//				return nil, fmt.Errorf("Invalid Y field in JSON")
+//			}
+//		}
+//
+//		privateKey := &ecdsa.PrivateKey{
+//			D: d,
+//			PublicKey: ecdsa.PublicKey{
+//				X: x,
+//				Y: y,
+//			},
+//		}
+//
+//		publicKey := &ecdsa.PublicKey{
+//			X: x,
+//			Y: y,
+//		}
+//
+//		// 创建Client实例
+//		client := NewClient(id, address, balance, privateKey, publicKey)
+//		users = append(users, client)
+//	}
+//
+//	return users, nil
+//}
