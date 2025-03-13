@@ -28,19 +28,21 @@ type Node struct {
 	Synchronized    bool              //用于判断节点是否与其他节点同步
 	stopChan        chan struct{}     //用于通知节点停止的通道
 	Addr            string
-	View            int
+	View            int // PBFT 视图编号（主节点编号）
 }
 
 // NewNode 创建一个新的节点实例
 func NewNode(addr string, id string, bc *Blockchain) *Node {
 
 	privateKey, publicKey, err := crypto11.GenerateKeyPair()
+	//调用ECDSA加密库，生成椭圆曲线数字签名算法（ECDSA）的私钥和公钥//这两个密钥用于签名和验证交易，确保数据安全。
 	if err != nil {
 		fmt.Printf("Error generating key pair: %v", err)
+		//但这里没有终止程序，可能会导致 node 被创建但没有密钥，建议改进?
 	}
 	node := &Node{
 		ID:              id,
-		TransactionPool: make([]*Transaction, 0),
+		TransactionPool: make([]*Transaction, 0), //存储待处理的交易列表，交易池：节点接收到交易时存入交易池；节点打包交易后，移出交易池
 		Blockchain:      bc,
 		stopChan:        make(chan struct{}),
 		Synchronized:    false,
@@ -164,6 +166,7 @@ func (n *Node) HandleRequest(request string) {
 					fmt.Println("即将提交区块")
 					n.Consensus.commitConfirmCount = 1
 					n.Blockchain.AddBlock(n.tempblock, n)
+
 					time.Sleep(time.Second)
 					fmt.Println("成功增加到区块链")
 					n.Blockchain.SaveBlockchainToJSON("./blockchain.json")

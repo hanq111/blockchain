@@ -50,6 +50,7 @@ func main() {
 	if nodeID == "client" {
 		data.ClientTcpListen("127.0.0.1:8001")
 	} else if addr, ok := data.NodeTable[nodeID]; ok {
+
 		node := data.NewNode(addr, nodeID, blockchain)
 		if node.ID == "Node0" {
 			node.Consensus = data.NewPBFT(node, true)

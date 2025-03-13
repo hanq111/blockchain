@@ -23,6 +23,7 @@ func ClientTcpListen(clientAddr string) {
 
 // 节点使用的tcp监听
 func (p *Node) tcpListen() {
+
 	listen, err := net.Listen("tcp", p.Addr)
 	if err != nil {
 		log.Panic(err)
@@ -40,9 +41,7 @@ func (p *Node) tcpListen() {
 			log.Panic(err)
 		}
 		p.HandleRequest(string(b))
-
 	}
-
 }
 
 // 使用tcp发送消息
@@ -58,6 +57,5 @@ func Sendmessage(context []byte, addr string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	conn.Close()
 }

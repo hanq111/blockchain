@@ -5,20 +5,23 @@ import (
 	"blockchain/crypto11"
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
 // Client 客户端的数据结构
 type Client struct {
-	ID            string
-	Address       string
-	Balance       float64
-	TransactionID int
+	ID            string  //客户端唯一标识符
+	Address       string  //客户端的区块链地址（模拟）
+	Balance       float64 //账户余额
+	TransactionID int     //客户端交易的编号。
 	PrivateKey    *ecdsa.PrivateKey
 	PublicKey     *ecdsa.PublicKey
 }
@@ -41,18 +44,20 @@ func (c *Client) StartClient() {
 
 	for c.Balance > 0 {
 		// 模拟用户交易
-		transaction := c.createTransaction()
-		transactionJSON, err := transaction.ToJSON()
+		transaction := c.createTransaction() //生成新交易
 
+		transactionJSON, err := transaction.ToJSON() //将交易转换为 JSON 格式，便于发送给节点。
 		if err != nil {
 			fmt.Println("Error creating transaction JSON:", err)
 			return
-		}
-		for id, addr := range NodeTable { //给每个结点都发信息，但只有主节点会进行处理
-			Sendmessage([]byte("tran"+transactionJSON), addr)
+		} //如果转换失败，则返回错误信息并退出。
+
+		for id, addr := range NodeTable { //给每个结点都发信息，但只有主节点会进行处理(NodeTable 维护 节点 ID 到 IP 地址的映射，用于客户端找到所有可用节点。)
+			Sendmessage([]byte("tran"+transactionJSON), addr) //交易前缀 "tran"，用于让节点识别交易数据。
 			fmt.Printf("客户端%s发送了信息给结点%s\n", c.ID, id)
 		}
-		//Sendmessage([]byte("tran"+transactionJSON), NodeTable["Node1"])
+		//Sendmessage([]byte("tran"+transactionJSON), NodeTable["Node1"])// 可以直接向 Node1 发送交易，而不广播到所有节点。
+		//但为什么还是要广播？
 		// 向节点提交交易
 		//node.AddTransaction(transactionJSON)
 
@@ -67,8 +72,9 @@ func (c *Client) StartClient() {
 func (c *Client) createTransaction() *Transaction {
 	amount := rand.Float64()*20 + 5   // 5-25 的随机数
 	fee := rand.Float64()*1.19 + 0.01 // 0.01-1.2 的随机数
-	c.Balance -= (amount + fee)
+	c.Balance -= (amount + fee)       //每次交易，余额减少amount + fee
 
+	//生成新交易
 	transaction, err := NewTransaction(c.Address, "otherReceiver", amount, fee, c.PrivateKey)
 	if err != nil {
 		fmt.Println("Error creating new transaction in client.go: %v", err)
@@ -105,8 +111,9 @@ func RunClients() {
 		NewClient("User2", "0x124563", 110.0, pri2, pub2),
 		NewClient("User3", "0x145235", 130.0, pri3, pub3),
 		NewClient("User4", "0x147889", 120.0, pri4, pub4),
-	}
-	for _, user := range Users { //利用文件存储持久化密钥
+	} //存储所有Client到Users切片，用于后续管理
+
+	for _, user := range Users { //遍历 Users 切片，将每个Client的密钥保存到文件利用文件存储持久化密钥
 		err := SaveKeysToFile(user)
 		if err != nil {
 			fmt.Println("Error saving keys for user %s: %v", user.ID, err)
@@ -124,24 +131,24 @@ func RunClients() {
 }
 func SaveKeysToFile(client *Client) error {
 	// 创建存储目录
-	err := os.MkdirAll("./keys", os.ModePerm)
+	err := os.MkdirAll("./keys", os.ModePerm) //检查./keys/目录是否存在，不存在->创建目录，
 	if err != nil {
 		return err
 	}
 
-	// 将私钥序列化为字符串
+	// 将私钥序列化为字符串（将 ECDSA 私钥转换成可存储格式。）
 	privateKeyStr, err := serializeECDSAPrivateKey(client.PrivateKey)
 	if err != nil {
 		return err
 	}
 
-	// 将公钥序列化为字符串
+	// 将公钥序列化为字符串（将 ECDSA 公钥转换成可存储格式。）
 	publicKeyStr, err := serializeECDSAPublicKey(client.PublicKey)
 	if err != nil {
 		return err
 	}
 
-	// 写入私钥到文件
+	// 写入私钥到文件，os.WriteFile() 将私钥内容写入文件。0644 让文件具有 可读写权限，但 其他用户只可读。
 	privateKeyFilePath := filepath.Join("./keys", fmt.Sprintf("%s_private_key.txt", client.Address))
 	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyStr), 0644)
 	if err != nil {
@@ -252,22 +259,23 @@ func deserializeECDSAPublicKey(str string) (*ecdsa.PublicKey, error) {
 	}
 }
 
-//func SaveUsersToFile(users []*Client, filePath string) error {
-//	jsonData, err := json.Marshal(users)
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = os.WriteFile(filePath, jsonData, 0644)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
+// -----------------------------------------------------------------------------------------------------------------
+func SaveUsersToFile(users []*Client, filePath string) error {
+	jsonData, err := json.Marshal(users)
+	if err != nil {
+		return err
+	}
 
-// // LoadUsersFromFile 从文件中加载用户数据
-//
+	err = os.WriteFile(filePath, jsonData, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// LoadUsersFromFile 从文件中加载用户数据
+// 简单解析JSON，直接读取filePath文件，解析为 []*Client 切片，然后返回。（适用于 JSON 文件格式与 Client 结构体完全匹配的情况。）
 //	func LoadUsersFromFile(filePath string) ([]*Client, error) {
 //		fileData, err := os.ReadFile(filePath)
 //		if err != nil {
@@ -283,67 +291,69 @@ func deserializeECDSAPublicKey(str string) (*ecdsa.PublicKey, error) {
 //
 //		return users, nil
 //	}
-//func LoadUsersFromFile(filePath string) ([]*Client, error) {
-//	fileData, err := os.ReadFile(filePath)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// 定义结构体用于解析JSON数据
-//	var jsonData []map[string]interface{}
-//	err = json.Unmarshal(fileData, &jsonData)
-//	if err != nil {
-//		fmt.Println("Error unmarshalling JSON:", err)
-//		return nil, err
-//	}
-//
-//	// 创建用户列表
-//	var users []*Client
-//
-//	// 遍历JSON数据，提取并创建Client实例
-//	for _, userJSON := range jsonData {
-//		id := userJSON["ID"].(string)
-//		address := userJSON["Address"].(string)
-//		balance, _ := strconv.ParseFloat(fmt.Sprint(userJSON["Balance"]), 64)
-//
-//		// 解析PrivateKey
-//		var d, x, y *big.Int
-//
-//		if dJSON, ok := userJSON["D"]; ok && dJSON != nil {
-//			if d, ok = dJSON.(*big.Int); !ok {
-//				return nil, fmt.Errorf("Invalid D field in JSON")
-//			}
-//		}
-//
-//		if xJSON, ok := userJSON["X"]; ok && xJSON != nil {
-//			if x, ok = xJSON.(*big.Int); !ok {
-//				return nil, fmt.Errorf("Invalid X field in JSON")
-//			}
-//		}
-//
-//		if yJSON, ok := userJSON["Y"]; ok && yJSON != nil {
-//			if y, ok = yJSON.(*big.Int); !ok {
-//				return nil, fmt.Errorf("Invalid Y field in JSON")
-//			}
-//		}
-//
-//		privateKey := &ecdsa.PrivateKey{
-//			D: d,
-//			PublicKey: ecdsa.PublicKey{
-//				X: x,
-//				Y: y,
-//			},
-//		}
-//
-//		publicKey := &ecdsa.PublicKey{
-//			X: x,
-//			Y: y,
-//		}
-//
-//		// 创建Client实例
-//		client := NewClient(id, address, balance, privateKey, publicKey)
-//		users = append(users, client)
-//	}
-//
-//	return users, nil
-//}
+
+// LoadUsersFromFile 处理复杂的 JSON 结构。适用于 JSON 文件结构不匹配 Client 结构体 的情况。使用 map[string]interface{} 手动解析 JSON，确保数据正确转换。
+func LoadUsersFromFile(filePath string) ([]*Client, error) {
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// 定义结构体用于解析JSON数据
+	var jsonData []map[string]interface{}
+	err = json.Unmarshal(fileData, &jsonData)
+	if err != nil {
+		fmt.Println("Error unmarshalling JSON:", err)
+		return nil, err
+	}
+
+	// 创建用户列表
+	var users []*Client
+
+	// 遍历JSON数据，提取并创建Client实例
+	for _, userJSON := range jsonData {
+		id := userJSON["ID"].(string)
+		address := userJSON["Address"].(string)
+		balance, _ := strconv.ParseFloat(fmt.Sprint(userJSON["Balance"]), 64)
+
+		// 解析PrivateKey
+		var d, x, y *big.Int
+
+		if dJSON, ok := userJSON["D"]; ok && dJSON != nil {
+			if d, ok = dJSON.(*big.Int); !ok {
+				return nil, fmt.Errorf("Invalid D field in JSON")
+			}
+		}
+
+		if xJSON, ok := userJSON["X"]; ok && xJSON != nil {
+			if x, ok = xJSON.(*big.Int); !ok {
+				return nil, fmt.Errorf("Invalid X field in JSON")
+			}
+		}
+
+		if yJSON, ok := userJSON["Y"]; ok && yJSON != nil {
+			if y, ok = yJSON.(*big.Int); !ok {
+				return nil, fmt.Errorf("Invalid Y field in JSON")
+			}
+		}
+
+		privateKey := &ecdsa.PrivateKey{
+			D: d,
+			PublicKey: ecdsa.PublicKey{
+				X: x,
+				Y: y,
+			},
+		}
+
+		publicKey := &ecdsa.PublicKey{
+			X: x,
+			Y: y,
+		}
+
+		// 创建Client实例
+		client := NewClient(id, address, balance, privateKey, publicKey)
+		users = append(users, client)
+	}
+
+	return users, nil
+}

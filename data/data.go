@@ -1,6 +1,7 @@
 package data
 
 var NodeTable map[string]string
+
 var Users []*Client
 
 //var ClientTable map[string]string

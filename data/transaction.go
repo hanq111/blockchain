@@ -21,6 +21,7 @@ type Transaction struct {
 	Timestamp       time.Time // 时间戳
 	Signature       string    // 数字签名
 	Premium         float64   //交易手续费
+
 }
 
 // NewTransaction 创建一个新的交易

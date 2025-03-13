@@ -14,7 +14,7 @@ import (
 type Blockchain struct {
 	chain  []*Block
 	mutex  sync.RWMutex
-	height int
+	height int // 区块链中区块的数量,每增加一个新的区块，区块高度++
 }
 
 // NewBlockchain 创建一个新的区块链实例

@@ -32,9 +32,9 @@ func TestRpctest(t *testing.T) {
 
 	// 向节点发送消息
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(2) //有 两个消息发送任务 需要等待。
 
-	go func() {
+	go func() { //node1 发送消息到 node2，内容为 "Hello from Node1"。
 		defer wg.Done()
 		context := []byte("Hello from Node1")
 		addr := "localhost:9002"
@@ -42,13 +42,12 @@ func TestRpctest(t *testing.T) {
 		data.Sendmessage(context, addr)
 	}()
 
-	go func() {
+	go func() { //node2 发送消息到 node1
 		defer wg.Done()
 		context := []byte("Hello from Node2")
 		addr := "localhost:9001"
 		fmt.Printf("[%s] Sending message to %s\n", node2.ID, addr)
 		data.Sendmessage(context, addr)
 	}()
-
 	wg.Wait()
 }

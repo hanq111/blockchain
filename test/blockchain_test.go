@@ -21,4 +21,20 @@ func TestSaveBlockchainToJSON(t *testing.T) {
 		t.Fatalf("Error saving blockchain to JSON: %v", err)
 	}
 
+	//func LoadBlockchainFromJSON(filePath string) (*Blockchain, error) {
+	//    file, err := os.Open(filePath)
+	//    if err != nil {
+	//        return nil, err
+	//    }
+	//    defer file.Close()
+	//
+	//    decoder := json.NewDecoder(file)
+	//    var blockchain Blockchain
+	//    if err := decoder.Decode(&blockchain); err != nil {
+	//        return nil, err
+	//    }
+	//
+	//    return &blockchain, nil
+	//}
+
 }
